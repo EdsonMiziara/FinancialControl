@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "FinancialControl.ConsoleApp": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
