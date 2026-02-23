@@ -55,7 +55,7 @@ Execute a aplicação:
 ```bash
 dotnet run
 ```
-O console mostrará o progresso do processamento e avisará quando a planilha for atualizada com sucesso.
+O console avisará quando a planilha for atualizada com sucesso.
 
 ## 📈 Estrutura da Planilha
 Para que o sistema funcione perfeitamente, a planilha gerada segue este padrão:
