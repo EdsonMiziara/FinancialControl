@@ -1,4 +1,4 @@
-# 💰 FinancialControl - Automação de Fluxo de Caixa
+# 💰 FinancialControl - Automação de Controle financeiro
 
 Este projeto nasceu de uma necessidade real: automatizar a gestão financeira de um Microempreendedor Individual (MEI). O sistema processa arquivos de extrato bancário (OFX) e consolida os dados de forma inteligente em uma planilha Excel estruturada para análise.
 
