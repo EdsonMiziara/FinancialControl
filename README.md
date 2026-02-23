@@ -19,8 +19,50 @@ O **FinancialControl** é uma aplicação Console em C# que:
 * **LINQ:** Utilizado para filtragem e organização eficiente das transações.
 * **OFX Parser:** Lógica customizada para leitura de arquivos de intercâmbio financeiro.
 
+## ⚙️ Como Configurar e Executar
+
+### Pré-requisitos
+* [.NET SDK](https://dotnet.microsoft.com/download) (Versão 8.0 ou superior)
+* Um editor de código como **VS Code** ou **Visual Studio**
+* Arquivos `.ofx` (exportados do seu Internet Banking)
+
+### 🚀 Instalação
+1. Clone o repositório:
+   ```bash
+   git clone [https://github.com/EdsonMiziara/FinancialControl.git](https://github.com/EdsonMiziara/FinancialControl.git)
+   ```
+
 ## 🚀 Como Funciona
 O código percorre o diretório configurado, busca por arquivos de extrato, evita duplicidades e alimenta a aba `CONTROLE`. A partir daí, a planilha utiliza fórmulas como `SOMASES` para gerar um resumo financeiro em tempo real na aba `RESUMO`.
+
+2. Navegue até a pasta do projeto:
+
+```bash
+cd FinancialControl
+```
+3. Restaure as dependências (ClosedXML):
+
+```bash
+dotnet restore
+```
+## 💻 Como Usar
+4. Coloque seus arquivos .ofx na pasta raiz do projeto ou na pasta de inputs configurada no código.
+
+Certifique-se de que a planilha Controle_Financeiro.xlsx não está aberta.
+
+Execute a aplicação:
+
+```bash
+dotnet run
+```
+O console mostrará o progresso do processamento e avisará quando a planilha for atualizada com sucesso.
+
+## 📈 Estrutura da Planilha
+Para que o sistema funcione perfeitamente, a planilha gerada segue este padrão:
+
+Aba CONTROLE: Onde os dados brutos são inseridos.
+
+Aba RESUMO: Onde as fórmulas de SOMASES consolidam os valores por categoria (ex: Extra, Alimentação, Serviços) e tipo (Receita/Despesa).
 
 ---
 Desenvolvido por Edson Miziara
