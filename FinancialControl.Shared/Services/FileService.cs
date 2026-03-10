@@ -1,6 +1,8 @@
 ﻿using ClosedXML.Excel;
 using FinancialControl.ConsoleApp.SupportModels;
 using OfxSharp;
+using System.Text;
+using System.IO;
 using System.Globalization;
 
 namespace FinancialControl.Shared.Services;
@@ -14,23 +16,50 @@ public static class FileService
         var files = Directory.GetFiles(folder, "*.ofx");
         var BRCulture = new CultureInfo("pt-BR");
 
-        // Pega estilo da linha de cabeçalho se for a primeira inserção, ou da última linha preenchida
+        // 1. Registra o provedor para o encoding 1252 funcionar
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        var encoding1252 = Encoding.GetEncoding(1252);
+
         var defaultStyle = ws.Row(actualLine - 1).Style;
 
         foreach (var file in files)
         {
-            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read);
-            var document = new OFXDocumentParser().Import(stream);
+            // 2. Lê o arquivo original com a codificação legada
+            string ofxContent = File.ReadAllText(file, encoding1252);
 
-            foreach (var tx in document.Transactions)
+            // 3. Cria o caminho para um arquivo temporário corrigido
+            string tempFilePath = file + ".tmp";
+
+            try
             {
-                string cleanDesc = Categorizer.RemoveAccents(tx.Memo);
-                if (existents.Contains($"{tx.Date:yyyy-MM-dd}|{cleanDesc}|{tx.Amount:F2}")) continue;
+                // 4. Salva o conteúdo corrigido no disco em UTF-8 (padrão do .NET)
+                File.WriteAllText(tempFilePath, ofxContent, Encoding.UTF8);
 
-                WriteTransactionLine(ws, actualLine, col, tx, cleanDesc, BRCulture, defaultStyle);
+                // 5. Agora sim, abrimos um FileStream do arquivo temporário para o parser
+                using (var stream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    var document = new OFXDocumentParser().Import(stream);
 
-                actualLine++;
-                added++;
+                    foreach (var tx in document.Transactions)
+                    {
+                        string cleanDesc = Categorizer.CleanText(tx.Name is null or "" ? tx.Memo : tx.Name);
+                        if (existents.Contains($"{tx.Date:yyyy-MM-dd}|{cleanDesc}|{tx.Amount:F2}")) continue;
+
+                        WriteTransactionLine(ws, actualLine, col, tx, cleanDesc, BRCulture, defaultStyle);
+
+                        actualLine++;
+                        added++;
+                    }
+                }
+            }
+            finally
+            {
+                // 6. Bloco finally garante que o arquivo temporário será deletado
+                // mesmo se acontecer algum erro durante o processamento
+                if (File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                }
             }
         }
         return added;
@@ -41,7 +70,7 @@ public static class FileService
         ws.Cell(line, col.Month).Value = culture.DateTimeFormat.GetAbbreviatedMonthName(tx.Date.Month).ToLower();
         ws.Cell(line, col.Year).Value = tx.Date.Year;
         ws.Cell(line, col.Type).Value = tx.Amount < 0 ? "DESPESA" : "RECEITA";
-        ws.Cell(line, col.Category).Value = Categorizer.Identify(tx.Memo, tx.Amount);
+        ws.Cell(line, col.Category).Value = Categorizer.Identify(desc, tx.Amount);
         ws.Cell(line, col.Description).Value = desc;
         ws.Cell(line, col.Value).Value = tx.Amount;
 
