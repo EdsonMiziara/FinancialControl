@@ -6,16 +6,16 @@ public static class Categorizer
 {
     private static readonly Dictionary<string, string[]> DefaultCategoriesRules = new()
     {
-        { "PRINCIPAL", new[] { "PORTABILIDADE", "MESMA TIT", "CRED TED", "CREDITO FORNEC" } },
+        { "PRINCIPAL", new[] { "PORTABILIDADE", "MESMA TIT", "CRED TED", "CREDITO FORNEC", "IDCONTROLEENVIOTED", "RECEBIMENTO PIX EDSON ELIAS MIZIARA FILHO 285 946" } },
         { "IMPOSTOS", new[] { "PAGTO DAS", "RECEITA FEDERAL", "DARF", "SIMPLES NACIONAL", "TRIBUTOS FEDERAIS" } },
         { "TARIFAS BANCARIAS", new[] { "TAR ", "CESTA", "MANUTENCAO", "ANUIDADE" } },
         { "ENERGIA AGUA LUZ", new[] { "CEMIG", "CODEN", "SAAE", "ENERGISA", "CODAU" } },
         { "SOFTWARE INFRA", new[] { "AWS", "AZURE", "GOOGLE", "JETBRAINS", "GITHUB" } },
         { "PRO-LABORE PESSOAL", new[] { "TRANSF TITULARIDADE", "SAQUE", "CONTA SALARIO" } },
         { "EXTRA", new[] { "PIX", "TRANSFERENCIA", "TED", "DOC", "DEPOSITO" } },
-        { "SAUDE", new[] { "DROGASIL", "Uberaba SAO PAULO BRA" } },
+        { "SAUDE", new[] { "DROGASIL1204 UBERABA BRA", "Uberaba SAO PAULO BRA", "TOTAL FARMA UBERABA BRA" } },
         { "COMIDA", new[] { "IFD", "TRIGALLE"} },
-        { "MERCADO", new[] { "SUPERMERCADO", "MERCADO", "CARREFOUR", "PÃO DE AÇÚCAR", "ZEMA", "BRETAS", "GUARATO", "BAHAMAS" } },
+        { "MERCADO", new[] { "SUPERMERCADO", "MERCADO", "CARREFOUR", "PÃO DE AÇÚCAR", "ZEMA", "BRETAS", "GUARATO", "BAHAMAS", "SUPERMERCADOS BH" } },
         { "TRANSPORTE", new[] { "UBER", "99 ", "TÁXI", "METRÔ" } },
         { "LAZER", new[] { "NETFLIX", "SPOTIFY", "AMAZON PRIME", "DISNEY+" } }
 
@@ -34,23 +34,54 @@ public static class Categorizer
 
     public static string Identify(string description, decimal value)
     {
-        if (string.IsNullOrWhiteSpace(description)) return "A CLASSIFICAR";
+        if (string.IsNullOrWhiteSpace(description))
+            return "A CLASSIFICAR";
 
-        // Limpa a descrição do extrato (remove acentos e o caractere estranho )
+        description = CleanText(description);
 
-        // O loop respeita a ordem do dicionário. PRINCIPAL vem primeiro.
+        var scores = new Dictionary<string, int>();
+
         foreach (var rule in CategoriesRules)
         {
-            if (rule.Value.Any(term => Regex.IsMatch(description, $@"\b{term}\b")))
+            int score = 0;
+
+            foreach (var term in rule.Value)
             {
-                return rule.Key;
+                if (string.IsNullOrWhiteSpace(term)) continue;
+
+                // Match exato (mais forte)
+                if (Regex.IsMatch(description, $@"\b{Regex.Escape(term)}\b"))
+                {
+                    score += 3;
+
+                    // bônus para termos grandes (mais específicos)
+                    if (term.Length > 10)
+                        score += 2;
+                }
+                // Match parcial (mais fraco)
+                else if (description.Contains(term))
+                {
+                    score += 1;
+                }
             }
+
+            if (score > 0)
+                scores[rule.Key] = score;
         }
 
-        // Regra de segurança para PIX enviado que não entrou em nenhuma categoria acima
-        if (description.Contains("PIX") && value < 0) return "PIX ENVIADO (VERIFICAR)";
+        if (!scores.Any())
+        {
+            if (description.Contains("PIX") && value < 0)
+                return "PIX ENVIADO (VERIFICAR)";
 
-        return "EXTRA";
+            return "EXTRA";
+        }
+        // pega a categoria com maior score
+        var best = scores
+            .OrderByDescending(x => x.Value)
+            .First();
+
+        return best.Key;
     }
 
     public static string RemoveAccents(string text)

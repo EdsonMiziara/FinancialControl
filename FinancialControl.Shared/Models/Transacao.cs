@@ -1,14 +1,16 @@
-﻿namespace FinancialControl.Lib;
+﻿namespace FinancialControl.Shared.Models;
 
 public class Transacao
 {
-    public DateTime Date { get; set; }
-    public decimal Amount { get; set; }
-    public string Description { get; set; }
-    public string Tipe { get; set; }
-    public string Category { get; set; }
-    public string Name { get; set; }
+    public int Id { get; set; }
 
+    public DateTime Data { get; set; }
+    public decimal Valor { get; set; }
 
+    public string Descricao { get; set; }
+    public string Tipo { get; set; }
+    public int CategoriaId { get; set; }
+    public Categoria Categoria { get; set; }
 
+    public string NomeOriginal { get; set; }
 }

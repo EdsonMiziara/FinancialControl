@@ -7,13 +7,25 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="BCrypt.Net-Next" Version="4.1.0" />
 		<PackageReference Include="ClosedXML" Version="0.105.0" />
-		<PackageReference Include="Google.Apis.Drive.v3" Version="1.73.0.4045" />
+		<PackageReference Include="Dapper" Version="2.1.72" />
+		<PackageReference Include="FuzzySharp" Version="2.0.2" />
+		<PackageReference Include="Google.Apis.Drive.v3" Version="1.73.0.4081" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.25" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.25" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+		<PackageReference Include="MySqlConnector" Version="2.5.0" />
 		<PackageReference Include="OfxSharp.NetStandard" Version="1.0.0" />
+		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.3" />
+		<PackageReference Include="System.Net.Http" Version="4.3.4" />
+		<PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Models\" />
+	  <None Update="appsettings.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </None>
 	</ItemGroup>
 
 </Project>
