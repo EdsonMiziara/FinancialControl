@@ -13,9 +13,6 @@ public class TransacaoRepository : ITransacaoRepository
         _connectionString = configuration.GetConnectionString("DefaultConnection");
     }
 
-    // ================================
-    // INSERT COM GARANTIA DE CATEGORIA
-    // ================================
     public async Task InsertAsync(Transacao t)
     {
         using var conexao = new MySqlConnection(_connectionString);
@@ -30,9 +27,6 @@ public class TransacaoRepository : ITransacaoRepository
         await conexao.ExecuteAsync(sql, t);
     }
 
-    // ================================
-    // GARANTIR CATEGORIA
-    // ================================
     private async Task<int> GarantirCategoriaAsync(int categoriaId)
     {
         using var conexao = new MySqlConnection(_connectionString);
@@ -57,9 +51,6 @@ public class TransacaoRepository : ITransacaoRepository
         return categoriaExtra.Value;
     }
 
-    // ================================
-    // 🔥 NOVO: LISTAR COM NOME DA CATEGORIA
-    // ================================
     public async Task<IEnumerable<dynamic>> GetAllAsync()
     {
         using var conexao = new MySqlConnection(_connectionString);
@@ -81,9 +72,6 @@ public class TransacaoRepository : ITransacaoRepository
         return await conexao.QueryAsync(sql);
     }
 
-    // ================================
-    // 🔥 NOVO: RESUMO DO DASHBOARD
-    // ================================
     public async Task<(decimal entrada, decimal saida, decimal saldo)> GetResumoAsync()
     {
         using var conexao = new MySqlConnection(_connectionString);
@@ -99,9 +87,6 @@ public class TransacaoRepository : ITransacaoRepository
         return (entrada, saida, saldo);
     }
 
-    // ================================
-    // SEUS MÉTODOS (mantidos)
-    // ================================
     public async Task<int> GetOrCreateCategoryIdAsync(string nome)
     {
         using var conexao = new MySqlConnection(_connectionString);
