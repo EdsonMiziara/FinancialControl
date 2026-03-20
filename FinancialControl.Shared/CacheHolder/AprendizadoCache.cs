@@ -2,7 +2,7 @@
 
 public class AprendizadoCache
 {
-    public string Descricao { get; set; }
-    public int CategoriaId { get; set; }
-    public int Peso { get; set; }
+    public string Description { get; set; }
+    public int CategoryId { get; set; }
+    public int Weight { get; set; }
 }

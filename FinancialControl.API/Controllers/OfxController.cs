@@ -39,7 +39,7 @@ public class OfxController : ControllerBase
             await file.CopyToAsync(stream);
         }
 
-        int adicionados = await _fileService.ProcessSingleOfx(tempPath);
+        int adicionados = await _fileService.ProcessOfxToDb(tempPath);
 
         return Ok(new { adicionados });
     }

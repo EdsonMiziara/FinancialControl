@@ -1,6 +1,7 @@
 ﻿using FinancialControl.Shared;
 using FinancialControl.Shared.Services;
 using FinancialControl.Shared.SupportModels;
+using FinancialControl.Shared.SupportModels.Repository;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Text;
@@ -40,7 +41,7 @@ internal static class Program
         var categorizer = new CategorizerService(cache, dbContext);
         var categoryRepository = new CategoryRepository(configuration);
         var transactionRepository = new TransactionRepository(configuration : configuration, categoryRepository : categoryRepository);
-        var fileService = new FileService(transactionRepository, categorizer);
+        var fileService = new FileService(transactionRepository, categorizer, categoryRepository);
 
         Application.Run(new MainForm(dbContext, fileService, categorizer));
     }

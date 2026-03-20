@@ -27,30 +27,30 @@ public class CategorizerLoader
     /// </returns>
     public async Task<CategorizerCache> LoadAsync()
     {
-        var categorias = await _context.Categorias
+        var categories = await _context.Categories
             .Include(c => c.Rules)
             .ToListAsync();
 
-        var aprendizados = await _context.Set<LearningCategory>().ToListAsync();
+        var learnings = await _context.Set<CategoryLearning>().ToListAsync();
 
         return new CategorizerCache
         {
-            Categorias = categorias.Select(c => new CategoriaCache
+            Categories = categories.Select(c => new CategoriaCache
             {
                 Id = c.Id,
-                Nome = c.Name,
-                Regras = c.Rules.Select(r => new RegraCache
+                Name = c.Name,
+                Rules = c.Rules.Select(r => new RegraCache
                 {
-                    Termo = Categorizer.CleanText(r.KeyWord),
-                    Peso = r.weight
+                    Term = Categorizer.CleanText(r.KeyWord),
+                    Weight = r.weight
                 }).ToList()
             }).ToList(),
 
-            Aprendizados = aprendizados.Select(a => new AprendizadoCache
+            Learnings = learnings.Select(a => new AprendizadoCache
             {
-                Descricao = a.CleanDescription,
-                CategoriaId = a.CategoryId,
-                Peso = a.Times
+                Description = a.CleanDescription,
+                CategoryId = a.CategoryId,
+                Weight = a.Count
             }).ToList()
         };
     }

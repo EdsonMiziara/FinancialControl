@@ -3,6 +3,6 @@
 public class CategoriaCache
 {
     public int Id { get; set; }
-    public string Nome { get; set; } 
-    public List<RegraCache> Regras { get; set; }
+    public string Name { get; set; } 
+    public List<RegraCache> Rules { get; set; }
 }

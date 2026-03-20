@@ -57,8 +57,8 @@ using (var scope = app.Services.CreateScope())
 
     var data = await loader.LoadAsync();
 
-    cache.Categorias = data.Categorias;
-    cache.Aprendizados = data.Aprendizados;
+    cache.Categories = data.Categories;
+    cache.Learnings = data.Learnings;
 }
 
 app.UseSwagger();

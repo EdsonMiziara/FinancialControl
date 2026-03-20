@@ -47,13 +47,13 @@
             };
 
             btnDashboard = CriarBotao("📊 Dashboard");
-            btnImportar = CriarBotao("📂 Importar OFX");
-            btnCategorias = CriarBotao("🏷️ Categorias");
+            btnImport = CriarBotao("📂 Importar OFX");
+            btnCategories = CriarBotao("🏷️ Categorias");
 
-            btnImportar.Click += btnImport_Click;
+            btnImport.Click += btnImport_Click;
 
-            panelSidebar.Controls.Add(btnCategorias);
-            panelSidebar.Controls.Add(btnImportar);
+            panelSidebar.Controls.Add(btnCategories);
+            panelSidebar.Controls.Add(btnImport);
             panelSidebar.Controls.Add(btnDashboard);
             panelSidebar.Controls.Add(lblLogo);
 
@@ -72,14 +72,14 @@
                 BackColor = Color.White
             };
 
-            labelTituloPagina = new Label
+            labelPageTitle = new Label
             {
                 Text = "Dashboard",
                 Location = new Point(10, 15),
                 Font = new Font("Segoe UI", 14, FontStyle.Bold)
             };
 
-            panelTop.Controls.Add(labelTituloPagina);
+            panelTop.Controls.Add(labelPageTitle);
 
             // CARDS
             panelCards = new Panel
@@ -99,25 +99,25 @@
             tableCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33));
             tableCards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
 
-            cardEntrada = CriarCard("Entrada", out lblValorEntrada, out lblTituloEntrada);
-            cardSaida = CriarCard("Saída", out lblValorSaida, out lblTituloSaida);
-            cardSaldo = CriarCard("Saldo", out lblValorSaldo, out lblTituloSaldo);
+            cardIncome = CriarCard("Entrada", out lblIncomeValue, out lblIncomeTitle);
+            cardExpense = CriarCard("Saída", out lblExpenseValue, out lblExpenseTitle);
+            cardBalance = CriarCard("Saldo", out lblBalanceValue, out lblBalanceTitle);
 
-            tableCards.Controls.Add(cardEntrada, 0, 0);
-            tableCards.Controls.Add(cardSaida, 1, 0);
-            tableCards.Controls.Add(cardSaldo, 2, 0);
+            tableCards.Controls.Add(cardIncome, 0, 0);
+            tableCards.Controls.Add(cardExpense, 1, 0);
+            tableCards.Controls.Add(cardBalance, 2, 0);
 
             panelCards.Controls.Add(tableCards);
 
             // GRID
-            gridTransacoes = new DataGridView
+            gridTransactions = new DataGridView
             {
                 Dock = DockStyle.Fill,
                 AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
             };
 
             // ADD
-            panelMain.Controls.Add(gridTransacoes);
+            panelMain.Controls.Add(gridTransactions);
             panelMain.Controls.Add(panelCards);
             panelMain.Controls.Add(panelTop);
 

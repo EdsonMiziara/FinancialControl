@@ -5,8 +5,8 @@ namespace FinancialControl.Shared.Interfaces;
 public interface ITransacaoRepository
 {
     Task InsertAsync(Transaction transacao);
-    Task<bool> ExistsTransactionAsync(DateTime data, decimal valor, string descricao);
+    Task<bool> ExistsTransactionAsync(DateTime date, decimal value, string description);
     Task<IEnumerable<dynamic>> GetAllAsync();
-    Task<(decimal entrada, decimal saida, decimal saldo)> GetResumeAsync();
+    Task<(decimal income, decimal expense, decimal balance)> GetResumeAsync();
 
 }

@@ -2,6 +2,6 @@
 
 public class CategorizerCache
 {
-    public List<CategoriaCache> Categorias { get; set; } = new();
-    public List<AprendizadoCache> Aprendizados { get; set; } = new();
+    public List<CategoriaCache> Categories { get; set; } = new();
+    public List<AprendizadoCache> Learnings { get; set; } = new();
 }

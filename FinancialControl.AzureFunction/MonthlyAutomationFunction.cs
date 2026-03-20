@@ -10,7 +10,7 @@ public class MonthlyAutomationFunction
     private readonly ILogger _logger;
     private readonly FileService _fileService; 
 
-    public MonthlyAutomationFunction(ILoggerFactory loggerFactory, FileService fileService)
+    public MonthlyAutomationFunction(ILoggerFactory loggerFactory, FileService fileService, ExcelExportService excelExportService)
     {
         _logger = loggerFactory.CreateLogger<MonthlyAutomationFunction>();
         _fileService = fileService;
@@ -40,12 +40,12 @@ public class MonthlyAutomationFunction
             using var excelService = new SpreadSheetService(localExcelPath, false, new ColumnMap());
             var ws = excelService.ObtainSpreadsheet();
 
-            var columns = FileService.ColumnMapping(ws);
-            var existingTransactions = FileService.LoadExistentTransactions(ws, columns);
+            var columns = ExcelExportService.ColumnMapping(ws);
+            var existingTransactions = ExcelExportService.LoadExistentTransactions(ws, columns);
 
             int currentRow = ws.LastRowUsed()?.RowNumber() + 1 ?? columns.HeaderLine + 1;
 
-            int addedCount = await _fileService.ProcessOfxFile(tempOfxFolder, ws, columns, existingTransactions, currentRow);
+            int addedCount = await _fileService.ProcessOfxToExcel(tempOfxFolder, ws, columns, existingTransactions, currentRow);
 
             if (addedCount > 0)
             {

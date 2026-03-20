@@ -8,7 +8,7 @@ public class Transaction
     public decimal Value { get; set; }
 
     public string Description { get; set; }
-    public string Tipe { get; set; }
+    public string Type { get; set; }
     public int CategoryId { get; set; }
     public Category Category { get; set; }
 

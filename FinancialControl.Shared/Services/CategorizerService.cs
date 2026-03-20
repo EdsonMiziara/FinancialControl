@@ -39,15 +39,15 @@ public class CategorizerService
         var scores = new Dictionary<int, double>();
 
         // 1. MATCH DIRETO
-        foreach (var categoria in _cache.Categorias)
+        foreach (var categoria in _cache.Categories)
         {
             double score = 0;
 
-            foreach (var regra in categoria.Regras)
+            foreach (var regra in categoria.Rules)
             {
-                if (description.Contains(regra.Termo))
+                if (description.Contains(regra.Term))
                 {
-                    score += 2 * regra.Peso;
+                    score += 2 * regra.Weight;
                 }
             }
 
@@ -58,16 +58,16 @@ public class CategorizerService
         // 2. FUZZY
         if (!scores.Any())
         {
-            foreach (var categoria in _cache.Categorias)
+            foreach (var categoria in _cache.Categories)
             {
                 double score = 0;
 
-                foreach (var regra in categoria.Regras)
+                foreach (var regra in categoria.Rules)
                 {
-                    int similarity = Fuzz.PartialRatio(description, regra.Termo);
+                    int similarity = Fuzz.PartialRatio(description, regra.Term);
 
                     if (similarity > 85)
-                        score += 3 * regra.Peso;
+                        score += 3 * regra.Weight;
                 }
 
                 if (score > 0)
@@ -76,16 +76,16 @@ public class CategorizerService
         }
 
         // 3. APRENDIZADO (PRIORIDADE)
-        foreach (var aprendizado in _cache.Aprendizados)
+        foreach (var aprendizado in _cache.Learnings)
         {
-            int similarity = Fuzz.PartialRatio(description, aprendizado.Descricao);
+            int similarity = Fuzz.PartialRatio(description, aprendizado.Description);
 
             if (similarity > 90)
             {
-                if (!scores.ContainsKey(aprendizado.CategoriaId))
-                    scores[aprendizado.CategoriaId] = 0;
+                if (!scores.ContainsKey(aprendizado.CategoryId))
+                    scores[aprendizado.CategoryId] = 0;
 
-                scores[aprendizado.CategoriaId] += 10 * aprendizado.Peso;
+                scores[aprendizado.CategoryId] += 10 * aprendizado.Weight;
             }
         }
 
@@ -113,22 +113,22 @@ public class CategorizerService
     {
         var limpa = Categorizer.CleanText(descricao);
 
-        var existente = await _context.Set<LearningCategory>()
+        var existente = await _context.Set<CategoryLearning>()
             .FirstOrDefaultAsync(x => x.CleanDescription == limpa);
 
         if (existente != null)
         {
-            existente.Times++;
+            existente.Count++;
             existente.CategoryId = categoriaId;
         }
         else
         {
-            existente = new LearningCategory
+            existente = new CategoryLearning
             {
                 Description = descricao,
                 CleanDescription = limpa,
                 CategoryId = categoriaId,
-                Times = 1
+                Count = 1
             };
 
             _context.Add(existente);
@@ -136,11 +136,11 @@ public class CategorizerService
 
         await _context.SaveChangesAsync();
 
-        _cache.Aprendizados.Add(new AprendizadoCache
+        _cache.Learnings.Add(new AprendizadoCache
         {
-            Descricao = limpa,
-            CategoriaId = categoriaId,
-            Peso = existente.Times
+            Description = limpa,
+            CategoryId = categoriaId,
+            Weight = existente.Count
         });
     }
 }

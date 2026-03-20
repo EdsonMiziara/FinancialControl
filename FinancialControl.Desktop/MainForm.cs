@@ -52,28 +52,28 @@ namespace FinancialControl.Desktop
         private void SetupUI()
         {
             // GRID
-            gridTransacoes.BorderStyle = BorderStyle.None;
-            gridTransacoes.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245);
-            gridTransacoes.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
-            gridTransacoes.RowHeadersVisible = false;
-            gridTransacoes.EnableHeadersVisualStyles = false;
+            gridTransactions.BorderStyle = BorderStyle.None;
+            gridTransactions.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(245, 245, 245);
+            gridTransactions.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            gridTransactions.RowHeadersVisible = false;
+            gridTransactions.EnableHeadersVisualStyles = false;
 
-            gridTransacoes.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(30, 30, 30);
-            gridTransacoes.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
-            gridTransacoes.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            gridTransactions.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(30, 30, 30);
+            gridTransactions.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            gridTransactions.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
 
-            gridTransacoes.DefaultCellStyle.Font = new Font("Segoe UI", 10);
-            gridTransacoes.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            gridTransactions.DefaultCellStyle.Font = new Font("Segoe UI", 10);
+            gridTransactions.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
 
-            gridTransacoes.CellFormatting += gridTransactions_CellFormatting;
+            gridTransactions.CellFormatting += gridTransactions_CellFormatting;
 
             // HEADER
-            labelTituloPagina.ForeColor = Color.FromArgb(40, 40, 40);
+            labelPageTitle.ForeColor = Color.FromArgb(40, 40, 40);
 
             // CARDS
-            ConfigureCard(cardEntrada, Color.FromArgb(40, 167, 69));
-            ConfigureCard(cardSaida, Color.FromArgb(220, 53, 69));
-            ConfigureCard(cardSaldo, Color.FromArgb(0, 123, 255));
+            ConfigureCard(cardIncome, Color.FromArgb(40, 167, 69));
+            ConfigureCard(cardExpense, Color.FromArgb(220, 53, 69));
+            ConfigureCard(cardBalance, Color.FromArgb(0, 123, 255));
         }
 
         /// <summary>
@@ -107,16 +107,29 @@ namespace FinancialControl.Desktop
         /// </returns>
         private async Task LoadGrid()
         {
-            var dados = await _context.Transacoes
-                .Include(x => x.Category) 
+            var dados = await _context.Transactions
+                .Include(x => x.Category)
                 .OrderByDescending(x => x.Date)
                 .Take(300)
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Date,
+                    x.Value,
+                    x.Description,
+                    x.Type,
+                    x.CategoryId,
+                    Category = x.Category != null ? x.Category.Name : ""
+                })
                 .ToListAsync();
 
-            gridTransacoes.DataSource = dados;
+            gridTransactions.DataSource = dados;
 
-            gridTransacoes.Columns["Valor"].DefaultCellStyle.Format = "C2";
-            gridTransacoes.Columns["Data"].DefaultCellStyle.Format = "dd/MM/yyyy";
+            gridTransactions.Columns["Value"].DefaultCellStyle.Format = "C2";
+            gridTransactions.Columns["Date"].DefaultCellStyle.Format = "dd/MM/yyyy";
+            gridTransactions.Columns["Category"].HeaderText = "Category";
+            gridTransactions.Columns["Value"].HeaderText = "Value";
+            gridTransactions.Columns["Date"].HeaderText = "Date";
         }
 
         /// <summary>
@@ -128,23 +141,23 @@ namespace FinancialControl.Desktop
         /// </returns>
         private async Task UpdateSummary()
         {
-            var entrada = await _context.Transacoes
-                .Where(x => x.Tipe == "INCOME")
+            var income = await _context.Transactions
+                .Where(x => x.Value > 0)
                 .SumAsync(x => (decimal?)x.Value) ?? 0;
 
-            var saida = await _context.Transacoes
-                .Where(x => x.Tipe == "EXPENSE")
+            var expense = await _context.Transactions
+                .Where(x => x.Value < 0)
                 .SumAsync(x => (decimal?)x.Value) ?? 0;
 
-            var saldo = entrada + saida; // saída já é negativa
+            var balance = income + expense; // saída já é negativa
 
-            lblValorEntrada.Text = entrada.ToString("C");
-            lblValorSaida.Text = saida.ToString("C");
-            lblValorSaldo.Text = saldo.ToString("C");
+            lblIncomeValue.Text = income.ToString("C");
+            lblExpenseValue.Text = expense.ToString("C");
+            lblBalanceValue.Text = balance.ToString("C");
 
-            lblValorEntrada.ForeColor = Color.Green;
-            lblValorSaida.ForeColor = Color.Red;
-            lblValorSaldo.ForeColor = saldo >= 0 ? Color.Green : Color.Red;
+            lblIncomeValue.ForeColor = Color.Green;
+            lblExpenseValue.ForeColor = Color.Red;
+            lblBalanceValue.ForeColor = balance >= 0 ? Color.Green : Color.Red;
         }
 
         /// <summary>
@@ -156,14 +169,29 @@ namespace FinancialControl.Desktop
         {
             using var dialog = new OpenFileDialog
             {
-                Filter = "OFX (*.ofx)|*.ofx"
+                Filter = "OFX (*.ofx)|*.ofx",
+                Multiselect = true,
+                Title = "Select one or more OFX files"
             };
 
-            if (dialog.ShowDialog() != DialogResult.OK) return;
+            if (dialog.ShowDialog() != DialogResult.OK)
+                return;
 
-            int adicionados = await _fileService.ProcessSingleOfx(dialog.FileName);
+            int totalImported = 0;
 
-            MessageBox.Show($"{adicionados} transações importadas!");
+            if (dialog.FileNames.Length == 1)
+            {
+                totalImported = await _fileService.ProcessSingleOfxToDb(dialog.FileName);
+            }
+            else
+            {
+                foreach (var filePath in dialog.FileNames)
+                {
+                    totalImported += await _fileService.ProcessSingleOfxToDb(filePath);
+                }
+            }
+
+            MessageBox.Show($"{totalImported} transactions imported!");
 
             await LoadGrid();
             await UpdateSummary();
@@ -176,7 +204,7 @@ namespace FinancialControl.Desktop
         /// <param name="e"></param>
         private void gridTransactions_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            var row = gridTransacoes.Rows[e.RowIndex];
+            var row = gridTransactions.Rows[e.RowIndex];
             var t = row.DataBoundItem as Transaction;
 
             if (t == null) return;
@@ -201,7 +229,7 @@ namespace FinancialControl.Desktop
         /// <param name="e"></param>
         private async void gridTransactions_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
-            var row = gridTransacoes.Rows[e.RowIndex];
+            var row = gridTransactions.Rows[e.RowIndex];
             var transacao = (Transaction)row.DataBoundItem;
 
             await _categorizer.LearnAsync(transacao.Description, transacao.CategoryId);
@@ -213,12 +241,12 @@ namespace FinancialControl.Desktop
         /// <returns></returns>
         private async Task LoadCategories()
         {
-            var lista = await _context.Categorias
+            var lista = await _context.Categories
                 .AsNoTracking()
                 .ToListAsync();
 
             comboCategorias.DataSource = lista;
-            comboCategorias.DisplayMember = "Nome";
+            comboCategorias.DisplayMember = "Name";
             comboCategorias.ValueMember = "Id";
         }
         private ComboBox comboCategorias;
@@ -231,26 +259,26 @@ namespace FinancialControl.Desktop
 
         private TableLayoutPanel tableCards;
 
-        private Panel cardEntrada;
-        private Panel cardSaida;
-        private Panel cardSaldo;
+        private Panel cardIncome;
+        private Panel cardExpense;
+        private Panel cardBalance;
 
         private Label lblLogo;
-        private Label labelTituloPagina;
+        private Label labelPageTitle;
 
-        private Label lblValorEntrada;
-        private Label lblValorSaida;
-        private Label lblValorSaldo;
+        private Label lblIncomeValue;
+        private Label lblExpenseValue;
+        private Label lblBalanceValue;
 
-        private Label lblTituloEntrada;
-        private Label lblTituloSaida;
-        private Label lblTituloSaldo;
+        private Label lblIncomeTitle;
+        private Label lblExpenseTitle;
+        private Label lblBalanceTitle;
 
         private Button btnDashboard;
-        private Button btnImportar;
-        private Button btnCategorias;
+        private Button btnImport;
+        private Button btnCategories;
 
-        private DataGridView gridTransacoes;
+        private DataGridView gridTransactions;
     }
 
 }

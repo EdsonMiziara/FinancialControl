@@ -32,7 +32,7 @@ public class DashboardController : ControllerBase
     [HttpGet("summary")]
     public async Task<IActionResult> GetResumo()
     {
-        var data = await _context.Transacoes
+        var data = await _context.Transactions
             .GroupBy(t => t.Category)
             .Select(g => new
             {
@@ -54,7 +54,7 @@ public class DashboardController : ControllerBase
     [HttpGet("alltransactions")]
     public async Task<IActionResult> AllTransactions()
     {
-        var transacoes = await _context.Transacoes.ToListAsync();
+        var transacoes = await _context.Transactions.ToListAsync();
 
         var totalEntrada = transacoes.Where(x => x.Value > 0).Sum(x => x.Value);
         var totalSaida = transacoes.Where(x => x.Value < 0).Sum(x => x.Value);

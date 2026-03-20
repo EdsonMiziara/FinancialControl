@@ -3,11 +3,11 @@ using Microsoft.EntityFrameworkCore;
 
 public class AppDbContext : DbContext
 {
-    public DbSet<Category> Categorias { get; set; }
-    public DbSet<CategoryRule> RegrasCategoria { get; set; }
-    public DbSet<LearningCategory> AprendizadoCategorias { get; set; }
-    public DbSet<Transaction> Transacoes { get; set; }
-    public DbSet<User> Usuarios { get; set; }
+    public DbSet<Category> Categories { get; set; }
+    public DbSet<CategoryRule> CategoryRules { get; set; }
+    public DbSet<CategoryLearning> CategoryLearning { get; set; }
+    public DbSet<Transaction> Transactions { get; set; }
+    public DbSet<User> Users { get; set; }
 
     public AppDbContext(DbContextOptions<AppDbContext> options)
         : base(options) { }
@@ -17,11 +17,11 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<Category>()
-            .ToTable("categorias")
+            .ToTable("categories")
             .HasKey(c => c.Id);
 
         modelBuilder.Entity<CategoryRule>()
-            .ToTable("regras_categoria")
+            .ToTable("category_rules")
             .HasKey(r => r.Id);
 
         modelBuilder.Entity<CategoryRule>()
@@ -29,56 +29,56 @@ public class AppDbContext : DbContext
             .WithMany(c => c.Rules)
             .HasForeignKey(r => r.CategoryId);
 
-        modelBuilder.Entity<LearningCategory>()
-            .ToTable("aprendizado_categoria")
+        modelBuilder.Entity<CategoryLearning>()
+            .ToTable("category_learning")
             .HasKey(a => a.Id);
 
-        modelBuilder.Entity<LearningCategory>()
+        modelBuilder.Entity<CategoryLearning>()
             .HasIndex(a => a.CleanDescription);
 
         modelBuilder.Entity<Transaction>(entity =>
         {
-            entity.ToTable("transacoes");
+            entity.ToTable("transactions");
 
             entity.HasKey(t => t.Id);
 
-            entity.Property(t => t.Date).HasColumnName("Data");
-            entity.Property(t => t.Value).HasColumnName("Valor");
-            entity.Property(t => t.Description).HasColumnName("Descricao");
-            entity.Property(t => t.CategoryId).HasColumnName("CategoriaId");
-            entity.Property(t => t.Tipe).HasColumnName("Tipo");
-            entity.Property(t => t.OriginalName).HasColumnName("NomeOriginal");
+            entity.Property(t => t.Date).HasColumnName("Date");
+            entity.Property(t => t.Value).HasColumnName("Value");
+            entity.Property(t => t.Description).HasColumnName("Description");
+            entity.Property(t => t.CategoryId).HasColumnName("CategoryId");
+            entity.Property(t => t.Type).HasColumnName("Type");
+            entity.Property(t => t.OriginalName).HasColumnName("OriginalName");
         });
 
         modelBuilder.Entity<CategoryRule>(entity =>
         {
-            entity.ToTable("regras_categoria");
+            entity.ToTable("category_rules");
 
             entity.HasKey(r => r.Id);
 
-            entity.Property(r => r.CategoryId).HasColumnName("categoria_id");
-            entity.Property(r => r.weight).HasColumnName("peso");
-            entity.Property(r => r.KeyWord).HasColumnName("palavra_chave");
+            entity.Property(r => r.CategoryId).HasColumnName("CategoryId");
+            entity.Property(r => r.weight).HasColumnName("Weight");
+            entity.Property(r => r.KeyWord).HasColumnName("Keyword");
 
         });
         modelBuilder.Entity<Category>(entity =>
         {
-            entity.ToTable("categorias");
+            entity.ToTable("categories");
 
             entity.HasKey(c => c.Id);
 
-            entity.Property(c => c.Name).HasColumnName("nome");
+            entity.Property(c => c.Name).HasColumnName("Name");
         });
-        modelBuilder.Entity<LearningCategory>(entity =>
+        modelBuilder.Entity<CategoryLearning>(entity =>
         {
-            entity.ToTable("aprendizado_categoria");
+            entity.ToTable("category_learning");
 
             entity.HasKey(a => a.Id);
 
-            entity.Property(a => a.CategoryId).HasColumnName("categoriaId");
-            entity.Property(a => a.CleanDescription).HasColumnName("descricao_limpa");
-            entity.Property(a => a.Times).HasColumnName("vezes");
-            entity.Property(a => a.Description).HasColumnName("descricao");
+            entity.Property(a => a.CategoryId).HasColumnName("categoryId");
+            entity.Property(a => a.CleanDescription).HasColumnName("CleanDescription");
+            entity.Property(a => a.Count).HasColumnName("Count");
+            entity.Property(a => a.Description).HasColumnName("Description");
         });
         modelBuilder.Entity<Transaction>()
     .HasOne(t => t.Category)

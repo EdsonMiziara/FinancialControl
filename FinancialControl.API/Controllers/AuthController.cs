@@ -26,7 +26,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest req)
     {
-        var user = _context.Usuarios
+        var user = _context.Users
             .FirstOrDefault(x => x.Email == req.Email);
 
         if (user == null) return Unauthorized();

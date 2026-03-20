@@ -2,6 +2,6 @@
 
 public class RegraCache
 {
-    public string Termo { get; set; }
-    public int Peso { get; set; }
+    public string Term { get; set; }
+    public int Weight { get; set; }
 }

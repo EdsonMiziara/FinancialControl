@@ -31,9 +31,9 @@ public class TransactionRepository : ITransacaoRepository
 
         t.CategoryId = await _categoryRepository.EnsureCategoryAsync(t.CategoryId);
 
-        string sql = @"INSERT INTO transacoes 
-            (Data, Descricao, Valor, CategoriaId, Tipo, NomeOriginal)
-            VALUES (@Date, @Description, @Value, @CategoryId, @Tipe, @OriginalName);";
+        string sql = @"INSERT INTO transactions 
+            (Date, Description, Value, CategoryId, Type, OriginalName)
+            VALUES (@Date, @Description, @Value, @CategoryId, @Type, @OriginalName);";
 
         await conexao.ExecuteAsync(sql, t);
     }
@@ -53,15 +53,15 @@ public class TransactionRepository : ITransacaoRepository
         string sql = @"
         SELECT 
             t.Id,
-            t.Data,
-            t.Valor,
-            t.Descricao,
-            t.Tipo,
-            c.Nome AS Categoria,
-            t.NomeOriginal
-        FROM transacoes t
-        LEFT JOIN categorias c ON c.Id = t.CategoriaId
-        ORDER BY t.Data DESC;
+            t.Date,
+            t.Value,
+            t.Description,
+            t.Type,
+            c.Name AS Category,
+            t.OriginalName
+        FROM transactions t
+        LEFT JOIN categories c ON c.Id = t.CategoryId
+        ORDER BY t.Date DESC;
         ";
 
         return await conexao.QueryAsync(sql);
@@ -69,23 +69,26 @@ public class TransactionRepository : ITransacaoRepository
     /// <summary>
     /// Calculates the financial summary: total income, total expenses and balance (income - expenses)
     /// </summary>
+    /// <param name="income"></param>
+    /// <param name="expense"></param>
+    /// <param name="balance"></param>
     /// <returns>
     /// Returns a tuple with the following values: entrada (total income), saida (total expenses) and saldo (balance)
     /// </returns>
-    
-    public async Task<(decimal entrada, decimal saida, decimal saldo)> GetResumeAsync()
+
+    public async Task<(decimal income, decimal expense, decimal balance)> GetResumeAsync()
     {
-        using var conexao = new MySqlConnection(_connectionString);
+        using var conection = new MySqlConnection(_connectionString);
 
-        var entrada = await conexao.ExecuteScalarAsync<decimal>(
-            "SELECT IFNULL(SUM(Valor),0) FROM transacoes WHERE Tipo = 'INCOME'");
+        var income = await conection.ExecuteScalarAsync<decimal>(
+            "SELECT IFNULL(SUM(Valor),0) FROM transactions WHERE Tipo = 'INCOME'");
 
-        var saida = await conexao.ExecuteScalarAsync<decimal>(
-            "SELECT IFNULL(SUM(Valor),0) FROM transacoes WHERE Tipo = 'EXPENSE'");
+        var expense = await conection.ExecuteScalarAsync<decimal>(
+            "SELECT IFNULL(SUM(Valor),0) FROM transactions WHERE Tipo = 'EXPENSE'");
 
-        var saldo = entrada - saida;
+        var saldo = income - expense;
 
-        return (entrada, saida, saldo);
+        return (income, expense, saldo);
     }
 
     /// <summary>
@@ -93,28 +96,28 @@ public class TransactionRepository : ITransacaoRepository
     /// value and description already exists (ignoring case sensitivity).
     /// This is used to avoid importing duplicate transactions from OFX files.
     /// </summary>
-    /// <param name="data"></param>
-    /// <param name="valor"></param>
-    /// <param name="descricao"></param>
+    /// <param name="date"></param>
+    /// <param name="value"></param>
+    /// <param name="description"></param>
     /// <returns>
     /// Returns true if a transaction with the same date, value and description already exists; otherwise, false.
     /// </returns>
     
-    public async Task<bool> ExistsTransactionAsync(DateTime data, decimal valor, string descricao)
+    public async Task<bool> ExistsTransactionAsync(DateTime date, decimal value, string description)
     {
         using var conexao = new MySqlConnection(_connectionString);
 
         var existe = await conexao.ExecuteScalarAsync<int>(
             @"SELECT COUNT(1) 
-          FROM transacoes 
-          WHERE Data = @Data 
-          AND Valor = @Valor 
-          AND LOWER(Descricao) = LOWER(@Descricao)",
+          FROM transactions 
+          WHERE Date = @Date 
+          AND Value = @Value
+          AND LOWER(Description) = LOWER(@Description)",
             new
             {
-                Data = data,
-                Valor = valor,
-                Descricao = descricao
+                Description = description,
+                Value = value,
+                Date = date
             });
 
         return existe > 0;
