@@ -10,6 +10,13 @@ public class SicoobService
     private readonly X509Certificate2 _certificate;
     private readonly HttpClient _httpClient;
 
+    /// <summary>
+    /// Constructor for SicoobService that initializes the service with the provided client ID, certificate bytes, and certificate password.
+    /// </summary>
+    /// <param name="clientId"></param>
+    /// <param name="certBytes"></param>
+    /// <param name="certPassword"></param>
+    
     public SicoobService(string clientId, byte[] certBytes, string certPassword)
     {
         _clientId = clientId;
@@ -20,6 +27,15 @@ public class SicoobService
         _httpClient = new HttpClient(handler);
     }
 
+    /// <summary>
+    /// Obtain OFX statement from Sicoob API for the given date range. It first retrieves an access token using client credentials flow,
+    /// </summary>
+    /// <param name="startDate"></param>
+    /// <param name="endDate"></param>
+    /// <returns>
+    /// Returns the OFX statement as a string. The caller is responsible for parsing the OFX content.
+    /// If the API call fails, an exception will be thrown.
+    /// </returns>
     public async Task<string> GetOfxStatementAsync(DateTime startDate, DateTime endDate)
     {
         // 1. Obter Token de Acesso (OAuth2)
@@ -35,6 +51,13 @@ public class SicoobService
         return await response.Content.ReadAsStringAsync();
     }
 
+    /// <summary>
+    /// Obtains an access token from Sicoob's authentication server using the client credentials flow.
+    /// It sends a POST request with the required parameters,
+    /// </summary>
+    /// <returns>
+    /// Returns the access token as a string. If the request fails or the response does not contain an access token, an exception will be thrown.
+    /// </returns>
     private async Task<string> GetAccessTokenAsync()
     {
         var content = new FormUrlEncodedContent(new[]

@@ -1,61 +1,87 @@
 ﻿using ClosedXML.Excel;
 using FinancialControl.ConsoleApp.SupportModels;
+using FinancialControl.Shared.Interfaces;
+using FinancialControl.Shared.Models;
 using OfxSharp;
-using System.Text;
-using System.IO;
 using System.Globalization;
+using System.Text;
 
 namespace FinancialControl.Shared.Services;
 
-public static class FileService
+public class FileService
 {
+    private readonly ITransacaoRepository _repository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly CategorizerService _categorizer;
+    private readonly ExcelExportService _excelExportService;
 
-    public static int ProcessOfxFile(string folder, IXLWorksheet ws, ColumnMap col, HashSet<string> existents, ref int actualLine)
+    /// <summary>
+    /// Constructor for FileService that initializes the service with a transaction repository, category repository, and categorizer service.
+    /// </summary>
+    /// <param name="repository"></param>
+    /// <param name="categorizer"></param>
+
+    public FileService(ITransacaoRepository repository, CategorizerService categorizer, ICategoryRepository categoryRepository)
+    {
+        _repository = repository;
+        _categorizer = categorizer;
+        _categoryRepository = categoryRepository;
+        _excelExportService = new ExcelExportService(repository, categorizer, categoryRepository);
+    }
+
+    /// <summary>
+    /// Processes of OFX files in a folder, reading transactions and writing to an Excel worksheet. It checks for existing transactions to avoid duplicates and uses the CategorizerService
+    /// to identify categories for each transaction. The method returns the number of transactions added to the worksheet.
+    /// </summary>
+    /// <param name="folder"></param>
+    /// <param name="ws"></param>
+    /// <param name="col"></param>
+    /// <param name="existingTransactions"></param>
+    /// <param name="currentLine"></param>
+    /// <returns>
+    /// Returns the number of transactions added to the worksheet after processing all OFX files in the specified folder. The method reads each OFX file, extracts transactions, checks for duplicates against existing transactions,
+    /// categorizes them, and writes new transactions to the Excel worksheet while also saving them to the database.
+    /// </returns>
+    
+    public async Task<int> ProcessOfxToExcel(string folder, IXLWorksheet ws, ColumnMap col, HashSet<string> existingTransactions, int currentLine)
     {
         int added = 0;
         var files = Directory.GetFiles(folder, "*.ofx");
-        var BRCulture = new CultureInfo("pt-BR");
+        var cultureInfo = new CultureInfo("pt-BR");
 
-        // 1. Registra o provedor para o encoding 1252 funcionar
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         var encoding1252 = Encoding.GetEncoding(1252);
 
-        var defaultStyle = ws.Row(actualLine - 1).Style;
+        var defaultStyle = ws.Row(currentLine - 1).Style;
 
         foreach (var file in files)
         {
-            // 2. Lê o arquivo original com a codificação legada
             string ofxContent = File.ReadAllText(file, encoding1252);
-
-            // 3. Cria o caminho para um arquivo temporário corrigido
             string tempFilePath = file + ".tmp";
 
             try
             {
-                // 4. Salva o conteúdo corrigido no disco em UTF-8 (padrão do .NET)
                 File.WriteAllText(tempFilePath, ofxContent, Encoding.UTF8);
 
-                // 5. Agora sim, abrimos um FileStream do arquivo temporário para o parser
                 using (var stream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
                 {
                     var document = new OFXDocumentParser().Import(stream);
 
                     foreach (var tx in document.Transactions)
                     {
-                        string cleanDesc = Categorizer.CleanText(tx.Name is null or "" ? tx.Memo : tx.Name);
-                        if (existents.Contains($"{tx.Date:yyyy-MM-dd}|{cleanDesc}|{tx.Amount:F2}")) continue;
+                        string cleanDesc = Categorizer.CleanText(string.IsNullOrEmpty(tx.Name) ? tx.Memo : tx.Name);
 
-                        WriteTransactionLine(ws, actualLine, col, tx, cleanDesc, BRCulture, defaultStyle);
+                        if (existingTransactions.Contains($"{tx.Date:yyyy-MM-dd}|{cleanDesc}|{tx.Amount:F2}")) continue;
 
-                        actualLine++;
+                        await _excelExportService.WriteTransactionLine(ws, currentLine, col, tx, cleanDesc, cultureInfo, defaultStyle);
+
+                        currentLine++;
                         added++;
                     }
                 }
             }
             finally
             {
-                // 6. Bloco finally garante que o arquivo temporário será deletado
-                // mesmo se acontecer algum erro durante o processamento
                 if (File.Exists(tempFilePath))
                 {
                     File.Delete(tempFilePath);
@@ -64,68 +90,122 @@ public static class FileService
         }
         return added;
     }
-    public static void WriteTransactionLine(IXLWorksheet ws, int line, ColumnMap col, Transaction tx, string desc, CultureInfo culture, IXLStyle style)
+
+    /// <summary>
+    /// Processes a single OFX file, reading transactions and saving them to the database.
+    /// The method reads the OFX file, extracts transactions, checks for duplicates against existing transactions in the database,
+    /// </summary>
+    /// <param name="filePath"></param>
+    /// <returns>
+    /// Returns the number of transactions added to the database after processing the specified OFX file.
+    /// The method reads the OFX file, extracts transactions, checks for duplicates against existing transactions in the database,
+    /// </returns>
+
+    public async Task<int> ProcessSingleOfxToDb(string filePath)
     {
-        ws.Cell(line, col.Date).Value = tx.Date;
-        ws.Cell(line, col.Month).Value = culture.DateTimeFormat.GetAbbreviatedMonthName(tx.Date.Month).ToLower();
-        ws.Cell(line, col.Year).Value = tx.Date.Year;
-        ws.Cell(line, col.Type).Value = tx.Amount < 0 ? "DESPESA" : "RECEITA";
-        ws.Cell(line, col.Category).Value = Categorizer.Identify(desc, tx.Amount);
-        ws.Cell(line, col.Description).Value = desc;
-        ws.Cell(line, col.Value).Value = tx.Amount;
+        int added = 0;
 
-        var range = ws.Range(line, col.Date, line, col.Value);
-        range.Style = style;
+        var encoding = Encoding.GetEncoding(1252);
+        string content = File.ReadAllText(filePath, encoding);
 
-        ws.Cell(line, col.Date).Style.DateFormat.Format = "dd/MM/yyyy";
-        ws.Cell(line, col.Value).Style.NumberFormat.Format = "R$ #,##0.00";
-        ws.Cell(line, col.Year).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Left;
+        var tempFile = filePath + ".tmp";
+        File.WriteAllText(tempFile, content, Encoding.UTF8);
 
-        // Cores baseadas no valor (conforme solicitado anteriormente)
-        if (tx.Amount < 0)
+        using var stream = new FileStream(tempFile, FileMode.Open);
+        var document = new OFXDocumentParser().Import(stream);
+
+        foreach (var tx in document.Transactions)
         {
-            ws.Cell(line, col.Value).Style.Fill.BackgroundColor = XLColor.LightPink;
-            ws.Cell(line, col.Value).Style.Font.FontColor = XLColor.DarkRed;
+            await WriteDbLine(tx);
+            added++;
         }
-        else
-        {
-            ws.Cell(line, col.Value).Style.Fill.BackgroundColor = XLColor.FromHtml("#D9EAD3"); // Verde claro da imagem
-            ws.Cell(line, col.Value).Style.Font.FontColor = XLColor.DarkGreen;
-        }
+
+        File.Delete(tempFile);
+        return added;
     }
 
-    public static HashSet<string> LoadExistentTransactions(IXLWorksheet ws, ColumnMap col)
-    {
-        var hash = new HashSet<string>();
-        int last = ws.LastRowUsed()?.RowNumber() ?? col.HeaderLine;
 
-        for (int i = col.HeaderLine + 1; i <= last; i++)
+    public async Task<int> ProcessOfxToDb(string folder)
+    {
+        int added = 0;
+        var files = Directory.GetFiles(folder, "*.ofx");
+        var cultureInfo = new CultureInfo("pt-BR");
+
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        var encoding1252 = Encoding.GetEncoding(1252);
+
+        foreach (var file in files)
         {
-            string date = ws.Cell(i, col.Date).TryGetValue<DateTime>(out var d) ? d.ToString("yyyy-MM-dd") : "";
-            string desc = Categorizer.CleanText(ws.Cell(i, col.Description).GetString());
-            string value = ws.Cell(i, col.Value).TryGetValue<decimal>(out var v) ? v.ToString("F2") : "";
-            hash.Add($"{date}|{desc}|{value}");
+            string ofxContent = File.ReadAllText(file, encoding1252);
+            string tempFilePath = file + ".tmp";
+
+            try
+            {
+                File.WriteAllText(tempFilePath, ofxContent, Encoding.UTF8);
+
+                using (var stream = new FileStream(tempFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    var document = new OFXDocumentParser().Import(stream);
+
+                    foreach (var tx in document.Transactions)
+                    {
+                        await WriteDbLine(tx);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao processar arquivo {file}: {ex.Message}");
+            }
+            finally
+            {
+                if (File.Exists(tempFilePath))
+                {
+                    File.Delete(tempFilePath);
+                }
+            }
         }
-        return hash;
+        return added;
+
     }
 
-    public static ColumnMap ColumnMapping(IXLWorksheet ws)
+    /// <summary>
+    /// Writes a transaction to the database after categorizing it.
+    /// The method takes an OFX transaction, cleans its description, identifies its category using the CategorizerService,
+    /// and then creates a new Transaction object to be saved in the database.
+    /// It checks for existing transactions to avoid duplicates before inserting the new transaction.
+    /// </summary>
+    /// <param name="tx"></param>
+    /// <returns>
+    /// Returns a Task representing the asynchronous operation of writing a transaction to the database. The method processes the given OFX transaction,
+    /// categorizes it, checks for duplicates, and if it's unique, inserts it into the database.
+    /// The return value indicates the completion of the database write operation.
+    /// </returns>
+    private async Task WriteDbLine(OfxSharp.Transaction tx)
     {
-        var header = ws.Search("DESCRIÇÃO").FirstOrDefault();
-        int line = header?.Address.RowNumber ?? 1;
-        var r = ws.Row(line);
+        string cleanDesc = Categorizer.CleanText(string.IsNullOrEmpty(tx.Name) ? tx.Memo : tx.Name);
+        int categoryId = _categorizer.Identify(cleanDesc, tx.Amount);
 
-        return new ColumnMap
+        var transaction = new Models.Transaction
         {
-            HeaderLine = line,
-            Date = r.CellsUsed().FirstOrDefault(c => c.Value.ToString().ToUpper().Contains("DATA"))?.Address.ColumnNumber ?? 2,
-            Month = r.CellsUsed().FirstOrDefault(c => c.Value.ToString().ToUpper().Contains("MÊS"))?.Address.ColumnNumber ?? 3,
-            Description = header?.Address.ColumnNumber ?? 7,
-            Value = r.CellsUsed().FirstOrDefault(c => c.Value.ToString().ToUpper().Contains("VALOR"))?.Address.ColumnNumber ?? 8,
-            Year = 4,
-            Type = 5,
-            Category = 6
+            Date = tx.Date,
+            Value = tx.Amount,
+            Description = cleanDesc,
+            CategoryId = categoryId,
+            Type = tx.Amount < 0 ? "EXPENSE" : "INCOME",
+            OriginalName = tx.Name
         };
+
+        bool exists = await _repository.ExistsTransactionAsync(
+            transaction.Date,
+            transaction.Value,
+            transaction.Description
+        );
+
+        if (!exists)
+        {
+            await _repository.InsertAsync(transaction);
+        }
     }
 
 }

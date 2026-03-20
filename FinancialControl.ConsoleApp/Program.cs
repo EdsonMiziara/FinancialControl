@@ -1,5 +1,9 @@
 ﻿using FinancialControl.ConsoleApp.SupportModels;
 using FinancialControl.Shared.Services;
+using FinancialControl.Shared.SupportModels;
+using FinancialControl.Shared.SupportModels.Repository;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 public static class Program
 {
@@ -7,75 +11,164 @@ public static class Program
     static void Main()
     {
         Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
+        RunAsync().GetAwaiter().GetResult();
+    }
 
-        // 1. Pergunta se o usuário quer um arquivo novo ou existente
-        var choice = MessageBox.Show(
-            "Deseja utilizar uma planilha de controle existente?\n\n(Sim = Selecionar Existente | Não = Criar Nova)",
-            "Configuração",
+    static async Task RunAsync()
+    {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        string connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+            .Options;
+
+        var dbContext = new AppDbContext(options);
+
+        var categoryRepository = new CategoryRepository(configuration);
+        var transactionRepository = new TransactionRepository(configuration, categoryRepository);
+        var loader = new CategorizerLoader(dbContext);
+        var cache = await loader.LoadAsync();
+        var categorizer = new CategorizerService(cache, dbContext);
+
+        var fileService = new FileService(transactionRepository, categorizer, categoryRepository);
+
+        var spreadsheetChoice = MessageBox.Show(
+            "Do you want to use an existing spreadsheet?\n\n(Yes = Select Existing | No = Create New)",
+            "Configuration",
             MessageBoxButtons.YesNoCancel,
             MessageBoxIcon.Question);
 
-        if (choice == DialogResult.Cancel) return;
-        bool isNew = (choice == DialogResult.No);
+        if (spreadsheetChoice == DialogResult.Cancel)
+            return;
 
-        // 2. Obtém os caminhos via interface visual
-        if (!TryObtainPath(isNew, out string ofxFolder, out string excelPath)) return;
+        bool isNewSpreadsheet = spreadsheetChoice == DialogResult.No;
+
+        if (!TryGetPaths(isNewSpreadsheet, out string ofxFolderPath, out string excelFilePath))
+            return;
+
+        if (!Directory.Exists(ofxFolderPath))
+        {
+            MessageBox.Show("Selected OFX folder does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        if (!isNewSpreadsheet && !File.Exists(excelFilePath))
+        {
+            MessageBox.Show("Selected Excel file does not exist.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
 
         try
         {
-            var mapping = new ColumnMap(); // Configuração base
-            using var excelService = new SpreadSheetService(excelPath, isNew, mapping);
-            var ws = excelService.ObtainSpreadsheet();
+            var columnMap = new ColumnMap();
+            using var spreadsheetService = new SpreadSheetService(excelFilePath, isNewSpreadsheet, columnMap);
+            var worksheet = spreadsheetService.ObtainSpreadsheet();
 
-            // 3. Se não for novo, remapeia as colunas para garantir que o código encontre os dados
-            var columns = isNew ? mapping : FileService.ColumnMapping(ws);
-            var existent = isNew ? new HashSet<string>() : FileService.LoadExistentTransactions(ws, columns);
+            var columns = isNewSpreadsheet ? columnMap : ExcelExportService.ColumnMapping(worksheet);
+            var existingTransactions = isNewSpreadsheet ? new HashSet<string>() : ExcelExportService.LoadExistentTransactions(worksheet, columns);
 
-            int currentLine = ws.LastRowUsed()?.RowNumber() + 1 ?? columns.HeaderLine + 1;
+            int currentRow = worksheet.LastRowUsed()?.RowNumber() + 1 ?? columns.HeaderLine + 1;
 
-            // 4. Processamento dos arquivos
-            int totalAdded = FileService.ProcessOfxFile(ofxFolder, ws, columns, existent, ref currentLine);
+            int totalAddedExcel = await fileService.ProcessOfxToExcel(ofxFolderPath, worksheet, columns, existingTransactions, currentRow);
+            int totalAddedDb = await fileService.ProcessOfxToDb(ofxFolderPath);
 
-            if (totalAdded > 0)
+            if (totalAddedExcel > 0)
             {
-                excelService.Save(currentLine - 1);
-                MessageBox.Show($"Sucesso! {totalAdded} novas transações adicionadas.", "Concluído");
+                spreadsheetService.Save(currentRow - 1);
+                MessageBox.Show($"Success! {totalAddedExcel} new transactions added to excel.", "Completed");
+
             }
-            else
+            if (totalAddedDb > 0)
             {
-                MessageBox.Show("Nenhuma transação nova encontrada.", "Aviso");
+                MessageBox.Show($"Success! {totalAddedDb} new transactions added to excel.", "Completed");
+            }
+            if (totalAddedDb <= 0)
+            {
+                MessageBox.Show($"Warning: No transactions was added to database");
+            }
+            if (totalAddedExcel <= 0)
+            {
+
+                MessageBox.Show($"Warning: No transactions was added to excel");
+
             }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Erro crítico: {ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show($"Critical error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-    public static bool TryObtainPath(bool isNew, out string folder, out string excel)
+
+    public static bool TryGetPaths(bool isNewSpreadsheet, out string ofxFolderPath, out string excelFilePath)
     {
-        folder = excel = "";
+        ofxFolderPath = "";
+        excelFilePath = "";
 
-        using (var fbd = new FolderBrowserDialog { Description = "Selecione a pasta contendo os arquivos OFX" })
-        {
-            if (fbd.ShowDialog() != DialogResult.OK) return false;
-            folder = fbd.SelectedPath;
-        }
+        string selectedFolder = "";
+        string selectedExcel = "";
 
-        if (isNew)
+        var folderThread = new Thread(() =>
         {
-            using var sfd = new SaveFileDialog { Title = "Salvar novo Controle Financeiro", Filter = "Excel|*.xlsx", DefaultExt = "xlsx" };
-            if (sfd.ShowDialog() != DialogResult.OK) return false;
-            excel = sfd.FileName;
-        }
-        else
+            using var folderDialog = new FolderBrowserDialog
+            {
+                Description = "Select folder containing OFX files"
+            };
+
+            if (folderDialog.ShowDialog() == DialogResult.OK)
+                selectedFolder = folderDialog.SelectedPath;
+        });
+
+        folderThread.SetApartmentState(ApartmentState.STA);
+        folderThread.Start();
+        folderThread.Join();
+
+        if (string.IsNullOrEmpty(selectedFolder))
+            return false;
+
+        ofxFolderPath = selectedFolder;
+
+        var excelThread = new Thread(() =>
         {
-            using var ofd = new OpenFileDialog { Title = "Selecione o Excel existente", Filter = "Excel|*.xlsx" };
-            if (ofd.ShowDialog() != DialogResult.OK) return false;
-            excel = ofd.FileName;
-        }
+            if (isNewSpreadsheet)
+            {
+                using var saveDialog = new SaveFileDialog
+                {
+                    Title = "Save new Excel file",
+                    Filter = "Excel|*.xlsx",
+                    DefaultExt = "xlsx"
+                };
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                    selectedExcel = saveDialog.FileName;
+            }
+            else
+            {
+                using var openDialog = new OpenFileDialog
+                {
+                    Title = "Select existing Excel",
+                    Filter = "Excel|*.xlsx"
+                };
+
+                if (openDialog.ShowDialog() == DialogResult.OK)
+                    selectedExcel = openDialog.FileName;
+            }
+        });
+
+        excelThread.SetApartmentState(ApartmentState.STA);
+        excelThread.Start();
+        excelThread.Join();
+
+        if (string.IsNullOrEmpty(selectedExcel))
+            return false;
+
+        excelFilePath = selectedExcel;
 
         return true;
     }
-
-
 }

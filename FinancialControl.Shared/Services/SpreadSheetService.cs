@@ -7,6 +7,18 @@ public class SpreadSheetService : IDisposable
     private readonly IXLWorksheet _ws;
     private readonly string path;
 
+    /// <summary>
+    /// Constructor for SpreadSheetService that initializes the service with a specified file path, a flag indicating whether to create a new spreadsheet,
+    /// and a ColumnMap for defining the structure of the spreadsheet.
+    /// If isNew is true, it creates a new workbook and adds a worksheet with default headers based on the ColumnMap.
+    /// If isNew is false, it attempts to load an existing workbook from the specified path and either retrieves or creates the "CONTROLE" worksheet.
+    /// The service provides methods to obtain the worksheet and save changes back to the file,
+    /// ensuring proper resource management through IDisposable implementation.
+    /// </summary>
+    /// <param name="path"></param>
+    /// <param name="isNew"></param>
+    /// <param name="col"></param>
+   
     public SpreadSheetService(string path, bool isNew, ColumnMap col)
     {
         this.path = path;
@@ -26,6 +38,12 @@ public class SpreadSheetService : IDisposable
         }
     }
 
+    /// <summary>
+    /// Creates the default structure of the spreadsheet based on the provided ColumnMap,
+    /// setting up headers and optionally creating an official Excel table for better formatting and functionality.
+    /// </summary>
+    /// <param name="ws"></param>
+    /// <param name="col"></param>
     private void CreateDefaultStructure(IXLWorksheet ws, ColumnMap col)
     {
         ws.Cell(col.HeaderLine, col.Date).Value = "DATA";
@@ -49,6 +67,11 @@ public class SpreadSheetService : IDisposable
         _workbook.SaveAs(path);
     }
 
+    /// <summary>
+    /// Adjusts the size of the Excel table to include all used rows, ensuring that formatting and formulas are applied correctly.
+    /// </summary>
+    /// <param name="finalLine"></param>
+    
     private void TableAdjust(int finalLine)
     {
         var table = _ws.Tables.FirstOrDefault();
