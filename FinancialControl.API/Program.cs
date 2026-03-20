@@ -10,8 +10,18 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+<<<<<<< HEAD
     app.UseSwagger();
     app.UseSwaggerUI();
+=======
+    var loader = scope.ServiceProvider.GetRequiredService<CategorizerLoader>();
+    var cache = scope.ServiceProvider.GetRequiredService<CategorizerCache>();
+
+    var data = await loader.LoadAsync();
+
+    cache.Categories = data.Categories;
+    cache.Learnings = data.Learnings;
+>>>>>>> f480823 (#UPDATE: Adding new features and Refactoring)
 }
 
 app.UseHttpsRedirection();
