@@ -8,12 +8,27 @@ public class CategorizerService
     private readonly CategorizerCache _cache;
     private readonly AppDbContext _context;
 
+    /// <summary>
+    /// Constructor for CategorizerService that initializes the service with a categorizer cache and a database context.
+    /// </summary>
+    /// <param name="cache"></param>
+    /// <param name="context"></param>
     public CategorizerService(CategorizerCache cache, AppDbContext context)
     {
         _cache = cache;
         _context = context;
     }
 
+    /// <summary>
+    /// Identifies the most likely category for a given description and value using a combination of direct matching,
+    /// fuzzy matching, and learned associations.
+    /// </summary>
+    /// <param name="description"></param>
+    /// <param name="value"></param>
+    /// <returns>
+    /// Returns the ID of the most likely category based on the provided description and value. The method first attempts
+    /// </returns>
+    
     public int Identify(string description, decimal value)
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -81,26 +96,39 @@ public class CategorizerService
 
         return scores.OrderByDescending(x => x.Value).First().Key;
     }
+
+    /// <summary>
+    /// Learns a new association between a cleaned description and a category ID. If the cleaned description already exists in the database,
+    /// </summary>
+    /// <param name="descricao"></param>
+    /// <param name="categoriaId"></param>
+    /// <returns>
+    /// Returns a Task representing the asynchronous operation. 
+    /// The method updates the database with the new association and also updates the in-memory cache for future identifications.
+    /// If the cleaned description already exists, it increments the count of occurrences and updates the category ID; otherwise,
+    /// it creates a new entry in the database and cache.
+    /// </returns>
+    
     public async Task LearnAsync(string descricao, int categoriaId)
     {
         var limpa = Categorizer.CleanText(descricao);
 
-        var existente = await _context.Set<AprendizadoCategoria>()
-            .FirstOrDefaultAsync(x => x.DescricaoLimpa == limpa);
+        var existente = await _context.Set<LearningCategory>()
+            .FirstOrDefaultAsync(x => x.CleanDescription == limpa);
 
         if (existente != null)
         {
-            existente.Vezes++;
-            existente.CategoriaId = categoriaId;
+            existente.Times++;
+            existente.CategoryId = categoriaId;
         }
         else
         {
-            existente = new AprendizadoCategoria
+            existente = new LearningCategory
             {
-                Descricao = descricao,
-                DescricaoLimpa = limpa,
-                CategoriaId = categoriaId,
-                Vezes = 1
+                Description = descricao,
+                CleanDescription = limpa,
+                CategoryId = categoriaId,
+                Times = 1
             };
 
             _context.Add(existente);
@@ -112,7 +140,7 @@ public class CategorizerService
         {
             Descricao = limpa,
             CategoriaId = categoriaId,
-            Peso = existente.Vezes
+            Peso = existente.Times
         });
     }
 }

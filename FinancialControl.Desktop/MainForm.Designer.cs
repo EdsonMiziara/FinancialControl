@@ -50,7 +50,7 @@
             btnImportar = CriarBotao("📂 Importar OFX");
             btnCategorias = CriarBotao("🏷️ Categorias");
 
-            btnImportar.Click += btnImportar_Click;
+            btnImportar.Click += btnImport_Click;
 
             panelSidebar.Controls.Add(btnCategorias);
             panelSidebar.Controls.Add(btnImportar);
@@ -126,6 +126,15 @@
 
             Text = "Financial Control";
             WindowState = FormWindowState.Maximized;
+            // CATEGORIAS (EXEMPLO)
+            comboCategorias = new ComboBox
+            {
+                Location = new Point(10, 70), // ajusta posição depois
+                Width = 200,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            panelTop.Controls.Add(comboCategorias);
         }
 
         private Button CriarBotao(string texto)

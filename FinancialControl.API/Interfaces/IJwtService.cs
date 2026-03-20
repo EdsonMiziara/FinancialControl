@@ -4,5 +4,5 @@ namespace FinancialControl.API.Interfaces;
 
 public interface IJwtService
 {
-    string GenerateToken(Usuario user);
+    string GenerateToken(User user);
 }

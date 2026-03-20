@@ -12,12 +12,25 @@ public class JwtService : IJwtService
 {
     private readonly JwtSettings _settings;
 
+    /// <summary>
+    /// Constructor for JwtService that initializes the service with JWT settings provided through dependency injection.
+    /// </summary>
+    /// <param name="settings"></param>
     public JwtService(IOptions<JwtSettings> settings)
     {
         _settings = settings.Value;
     }
 
-    public string GenerateToken(Usuario user)
+    /// <summary>
+    /// Generates a JWT token for the given user, including claims for user ID and email,
+    /// and signs it with the configured secret key. The token expires after a specified number of hours.
+    /// </summary>
+    /// <param name="user"></param>
+    /// <returns>
+    /// Returns a string representation of the generated JWT token,
+    /// which can be used for authentication and authorization purposes in the application.
+    /// </returns>
+    public string GenerateToken(User user)
     {
         var key = Encoding.ASCII.GetBytes(_settings.Key);
 

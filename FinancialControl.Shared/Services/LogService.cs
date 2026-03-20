@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FinancialControl.Shared.Services;
+﻿namespace FinancialControl.Shared.Services;
 
 public static class LogService
 {
+    /// <summary>
+    /// Registers a log message to a specified file. If the file or its directory does not exist, they will be created automatically.
+    /// </summary>
+    /// <param name="message"></param>
+    /// <param name="logPath"></param>
     public static void Register(string message, string logPath = "logs/execucao.txt")
     {
         var directory = Path.GetDirectoryName(logPath);

@@ -21,17 +21,34 @@ public static class Categorizer
 
     };
 
-    // Este dicionário será preenchido com todos os textos já limpos e sem acentos
     private static readonly Dictionary<string, string[]> CategoriesRules;
 
+    /// <summary>
+    /// Constructor for the Categorizer class that initializes the category rules 
+    /// by cleaning the text of both the category keys and their associated search terms.
+    /// </summary>
     static Categorizer()
     {
         CategoriesRules = DefaultCategoriesRules.ToDictionary(
-            kvp => CleanText(kvp.Key), // Limpa a chave (ex: ÁGUA -> AGUA)
-            kvp => kvp.Value.Select(term => CleanText(term)).ToArray() // Limpa cada termo de busca
+            kvp => CleanText(kvp.Key), // Limpa texto da chave 
+            kvp => kvp.Value.Select(term => CleanText(term)).ToArray() // Limpa cada texto de termo de busca
         );
     }
 
+
+    /// <summary>
+    /// Categorize a descption based on predefined rules.
+    /// It uses a scoring system where exact matches score higher than partial matches,
+    /// and longer terms (more specific) score more. If no category matches,
+    /// it checks for "PIX" in the description with a negative value to classify as "PIX ENVIADO (VERIFICAR)",
+    /// otherwise it defaults to "EXTRA".
+    /// </summary>
+    /// <param name="description"></param>
+    /// <param name="value"></param>
+    /// <returns>
+    /// Returns the identified category as a string. If the description is empty or null, it returns "A CLASSIFICAR".
+    /// </returns>
+    
     public static string Identify(string description, decimal value)
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -39,6 +56,7 @@ public static class Categorizer
 
         description = CleanText(description);
 
+        //Scorificação para cada categoria: match exato vale mais que match parcial, e termos mais específicos (maiores) valem mais
         var scores = new Dictionary<string, int>();
 
         foreach (var rule in CategoriesRules)
@@ -84,6 +102,15 @@ public static class Categorizer
         return best.Key;
     }
 
+    /// <summary>
+    /// Remove acentos e caracteres especiais de uma string, mantendo apenas letras (A-Z), números (0-9) e espaços.
+    /// </summary>
+    /// <param name="text"></param>
+    /// <returns>
+    /// Returns a cleaned version of the input string with accents removed,
+    /// converted to uppercase, and with multiple spaces normalized to a single space.
+    /// </returns>
+
     public static string RemoveAccents(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
@@ -105,15 +132,22 @@ public static class Categorizer
         string result = sb.ToString().Normalize(NormalizationForm.FormC).ToUpper();
         return Regex.Replace(result, @"\s+", " ").Trim();
     }
+    /// <summary>
+    /// Clean Text Removing accents, special characters and normalizing spaces.
+    /// </summary>
+    /// <param name="text"></param>
+    /// <returns>
+    /// Returns a cleaned version of the input string with accents removed, special characters replaced by spaces,
+    /// </returns>
 
     public static string CleanText(string text)
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
-        // 1. PRIMEIRO removemos os acentos (para garantir que letras acentuadas sejam salvas)
+        // 1. PRIMEIRO removemos os acentos 
         string withoutAccents = RemoveAccents(text);
 
-        // 2. AGORA substituímos qualquer coisa que NÃO seja A-Z, 0-9 ou espaço por espaço vazio.
+        // 2. substitui qualquer coisa que NÃO seja A-Z, 0-9 ou espaço por espaço vazio.
         string noSpecials = Regex.Replace(withoutAccents, @"[^a-zA-Z0-9\s]", " ");
 
         // 3. Normaliza os espaços finais gerados pela substituição acima

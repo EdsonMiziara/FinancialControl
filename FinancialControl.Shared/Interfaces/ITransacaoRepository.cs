@@ -4,8 +4,9 @@ namespace FinancialControl.Shared.Interfaces;
 
 public interface ITransacaoRepository
 {
-    Task InsertAsync(Transacao transacao);
-    Task<int> GetOrCreateCategoryIdAsync(string nome);
-    Task<string> GetCategoriaNomeAsync(int categoriaId);
-    Task<Dictionary<int, string>> GetCategoriasAsync();
+    Task InsertAsync(Transaction transacao);
+    Task<bool> ExistsTransactionAsync(DateTime data, decimal valor, string descricao);
+    Task<IEnumerable<dynamic>> GetAllAsync();
+    Task<(decimal entrada, decimal saida, decimal saldo)> GetResumeAsync();
+
 }

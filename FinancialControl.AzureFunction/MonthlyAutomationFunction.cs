@@ -8,9 +8,8 @@ namespace FinancialControl.AzureFunction;
 public class MonthlyAutomationFunction
 {
     private readonly ILogger _logger;
-    private readonly FileService _fileService; // Adicionada a dependência do FileService
+    private readonly FileService _fileService; 
 
-    // Injetando o FileService via construtor
     public MonthlyAutomationFunction(ILoggerFactory loggerFactory, FileService fileService)
     {
         _logger = loggerFactory.CreateLogger<MonthlyAutomationFunction>();
@@ -41,13 +40,11 @@ public class MonthlyAutomationFunction
             using var excelService = new SpreadSheetService(localExcelPath, false, new ColumnMap());
             var ws = excelService.ObtainSpreadsheet();
 
-            // Chamadas estáticas (estes métodos continuam na classe estaticamente)
             var columns = FileService.ColumnMapping(ws);
             var existingTransactions = FileService.LoadExistentTransactions(ws, columns);
 
             int currentRow = ws.LastRowUsed()?.RowNumber() + 1 ?? columns.HeaderLine + 1;
 
-            // ADICIONADO AWAIT e chamada pela instância (_fileService)
             int addedCount = await _fileService.ProcessOfxFile(tempOfxFolder, ws, columns, existingTransactions, currentRow);
 
             if (addedCount > 0)

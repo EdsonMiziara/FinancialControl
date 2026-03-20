@@ -17,6 +17,12 @@ public class AuthController : ControllerBase
         _jwtService = jwtService;
     }
 
+    /// <summary>
+    /// Realizes user login and returns a JWT token if the credentials are valid.
+    /// </summary>
+    /// <param name="req"></param>
+    /// <returns></returns>
+    
     [HttpPost("login")]
     public IActionResult Login([FromBody] LoginRequest req)
     {
@@ -25,7 +31,7 @@ public class AuthController : ControllerBase
 
         if (user == null) return Unauthorized();
 
-        if (BCrypt.Net.BCrypt.Verify(req.Password, user.SenhaHash))
+        if (BCrypt.Net.BCrypt.Verify(req.Password, user.HashPassword))
             return Unauthorized();
 
         var token = _jwtService.GenerateToken(user);

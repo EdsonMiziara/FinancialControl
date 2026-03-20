@@ -13,7 +13,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-// EF
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
 );
@@ -49,7 +48,8 @@ var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 🔥 CARREGA CACHE NA INICIALIZAÇÃO
+// Load cache on startup
+
 using (var scope = app.Services.CreateScope())
 {
     var loader = scope.ServiceProvider.GetRequiredService<CategorizerLoader>();

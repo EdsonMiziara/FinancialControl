@@ -12,12 +12,12 @@ internal static class Program
     [STAThread]
     static void Main()
     {
-        // 🔥 IMPORTANTE: registrar encoding ANTES de tudo
+        //registra encoding antes de tudo
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
         ApplicationConfiguration.Initialize();
 
-        // 🔧 Configuração (appsettings.json)
+        // Configuração (appsettings.json)
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -25,23 +25,23 @@ internal static class Program
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        // 🔧 DbContext (MySQL)
+        // DbContext (MySQL)
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options;
 
         var dbContext = new AppDbContext(options);
 
-        // 🔥 Carregar cache (IMPORTANTE)
+        // Carrega cache 
         var loader = new CategorizerLoader(dbContext);
         var cache = loader.LoadAsync().GetAwaiter().GetResult();
 
-        // 🔧 Services
+        // Services
         var categorizer = new CategorizerService(cache, dbContext);
-        var repository = new TransacaoRepository(configuration);
-        var fileService = new FileService(repository, categorizer);
+        var categoryRepository = new CategoryRepository(configuration);
+        var transactionRepository = new TransactionRepository(configuration : configuration, categoryRepository : categoryRepository);
+        var fileService = new FileService(transactionRepository, categorizer);
 
-        // 🚀 Rodar aplicação
         Application.Run(new MainForm(dbContext, fileService, categorizer));
     }
 }

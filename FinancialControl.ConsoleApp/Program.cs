@@ -1,17 +1,9 @@
 ﻿using FinancialControl.ConsoleApp.SupportModels;
-using FinancialControl.ConsoleApp.SupportModels;
-using FinancialControl.Shared;
-using FinancialControl.Shared.Interfaces;
 using FinancialControl.Shared.Interfaces;
 using FinancialControl.Shared.Services;
-using FinancialControl.Shared.Services;
-using FinancialControl.Shared.SupportModels;
 using FinancialControl.Shared.SupportModels;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration;
-using System.Windows.Forms;
 
 public static class Program
 {
@@ -27,20 +19,20 @@ public static class Program
 
         string connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        // ✅ CORRETO
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options;
 
         var dbContext = new AppDbContext(options);
 
-        ITransacaoRepository repository = new TransacaoRepository(configuration);
+        var categoryRepo = new CategoryRepository(configuration);
+        ITransacaoRepository transactionRepo = new TransactionRepository(configuration, categoryRepo);
         var loader = new CategorizerLoader(dbContext);
         var cache = await loader.LoadAsync();
 
         var categorizer = new CategorizerService(cache, dbContext);
 
-        FileService fileService = new FileService(repository, categorizer);
+        FileService fileService = new FileService(transactionRepo, categorizer);
 
 
         var choice = MessageBox.Show(
